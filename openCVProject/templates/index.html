@@ -237,6 +237,36 @@
             margin-top: 30px;
         }
 
+        /* START: Action button style update */
+        .action-button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* Blue gradient for webcam button */
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            /* margin-top: 20px; -> Removed from here, moved to .webcam-controls if needed */
+        }
+
+        .action-button:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%); /* Darker blue on hover */
+            transform: scale(var(--button-hover-scale));
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .action-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        /* END: Action button style update */
+
+
         .webcam-video-container {
             position: relative;
             background: #000;
@@ -247,7 +277,8 @@
             justify-content: center;
             align-items: center;
             width: 100%; /* Will take full width of its parent */
-            max-width: 850px;
+            max-width: 950px; /* Giữ nguyên 950px */
+            max-height: 700px; /* Giữ nguyên 700px */
             aspect-ratio: 16 / 9;
             border: 6px solid transparent;
             transition: border-color 0.6s ease-in-out, box-shadow 0.6s ease-in-out;
@@ -273,6 +304,7 @@
             width: 100%;
             height: auto;
             display: block;
+            object-fit: contain; /* Đảm bảo ảnh không bị cắt, phù hợp với container */
         }
 
         .flash {
@@ -367,7 +399,8 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            max-width: 850px;
+            max-width: 950px; /* Giữ nguyên 950px */
+            max-height: 700px; /* Giữ nguyên 700px */
             aspect-ratio: 16 / 9;
             border: 6px solid transparent;
             transition: border-color 0.6s ease-in-out, box-shadow 0.6s ease-in-out;
@@ -394,6 +427,7 @@
             width: 100%;
             height: auto;
             display: block;
+            object-fit: contain; /* Đảm bảo ảnh không bị cắt, phù hợp với container */
         }
 
         .loading-overlay {
@@ -489,7 +523,7 @@
             }
             .webcam-video-container, .analyzed-image-display {
                 width: 100%;
-                max-width: 600px;
+                max-width: 600px; /* Adjust for smaller screens */
                 border-radius: 15px;
             }
             .emotion-label {
@@ -813,7 +847,7 @@
                         webcamVideoContainer.classList.remove('loading');
                     }, 500);
                     hideMessage(webcamErrorMessageDiv); // Hide any previous error
-                    if (webcamEmotionIntervalId) clearInterval(webcamEmotionIntervalId); // Clear existing interval
+                    if (webcamEmotionIntervalId) clearInterval(webcamEmotionIntervalId);
                     webcamEmotionIntervalId = setInterval(fetchWebcamEmotionData, 1000); // Start fetching emotion data
                 })
                 .catch(error => {
@@ -982,21 +1016,21 @@
         imageUploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            imageUploadArea.style.borderColor = "var(--primary-dark)"; // Use string literal for CSS var
+            imageUploadArea.style.borderColor = "var(--primary-dark)";
             imageUploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
         });
 
         imageUploadArea.addEventListener('dragleave', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            imageUploadArea.style.borderColor = "var(--primary-color)"; // Use string literal for CSS var
+            imageUploadArea.style.borderColor = "var(--primary-color)";
             imageUploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
         });
 
         imageUploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            imageUploadArea.style.borderColor = "var(--primary-color)"; // Use string literal for CSS var
+            imageUploadArea.style.borderColor = "var(--primary-color)";
             imageUploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
 
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {

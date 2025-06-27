@@ -1,24 +1,24 @@
-import cv2  # cite: 5
+import cv2
 import numpy as np
-from tensorflow.keras.models import load_model  # cite: 5
+from tensorflow.keras.models import load_model
 from collections import deque
 import io
-from PIL import Image, ImageDraw, ImageFont  # cite: 1
-from flask import Flask, render_template, Response, request, jsonify, send_file  # cite: 1
-import base64  # cite: 1
+from PIL import Image, ImageDraw, ImageFont
+from flask import Flask, render_template, Response, request, jsonify, send_file
+import base64
 import datetime
 import os
 
 app = Flask(__name__)
 
 # Load mô hình đã huấn luyện
-model = load_model("emotion_model.h5", compile=False)  # cite: 5
+model = load_model("emotion_model.h5", compile=False)
 
 # Load file nhận diện khuôn mặt từ OpenCV
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')  # cite: 5
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Danh sách cảm xúc
-emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']  # cite: 5
+emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
 # Ánh xạ cảm xúc sang emoji (cần giống với frontend)
 EMOJI_MAP = {
@@ -35,7 +35,6 @@ EMOJI_MAP = {
 emotion_font = None
 text_font = None
 
-# Prioritize common emoji fonts based on OS, then look in current directory, then generic.
 font_paths = [
     "C:/Windows/Fonts/seguiemj.ttf",  # Windows Segoe UI Emoji
     "/System/Library/Fonts/Apple Color Emoji.ttc",  # macOS Apple Color Emoji
@@ -49,13 +48,10 @@ font_paths = [
 for path in font_paths:
     try:
         if os.path.exists(path):
-            # Adjust font sizes as needed for overlay clarity
-            emotion_font = ImageFont.truetype(path, 48)  # Larger for emoji
-            text_font = ImageFont.truetype(path, 32)  # Smaller for text label
+            emotion_font = ImageFont.truetype(path, 55)
+            text_font = ImageFont.truetype(path, 35)
             print(f"Loaded font from: {path}")
             break
-        # else: # Uncomment for detailed font loading debug
-        #     print(f"Font file not found: {path}")
     except IOError as e:
         print(f"IOError loading font {path}: {e}")
     except Exception as e:
@@ -134,7 +130,7 @@ def process_frame_for_display(frame):
         cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
         text_to_display = f"{current_frame_emotion} ({current_frame_confidence * 100:.2f}%)"
 
-        # Adjust text position slightly if it goes out of frame
+        # Adjust text position carefully if it goes out of frame
         text_size = cv2.getTextSize(text_to_display, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
         text_x = x
         text_y = y - 10
@@ -170,8 +166,6 @@ def generate_webcam_frames():
         success, frame = camera.read()
         if not success:
             print("Failed to read frame from camera. Releasing camera.")
-            # Try to re-open camera or break
-            # For robustness, we can try to re-open here, but often means disconnect
             break
 
         processed_frame = process_frame_for_display(frame)
@@ -191,14 +185,15 @@ def add_emotion_overlay(image_np, dominant_emotion, all_confidences_dict):
     draw = ImageDraw.Draw(img_pil)
 
     if emotion_font and text_font:
-        emotion_emoji_char = EMOJI_MAP.get(dominant_emotion, "😐")
+        emotion_emoji_char = EMOJI_MAP.get(dominant_emotion, "🤔")  # Use thinking emoji as fallback
         emotion_text_label = dominant_emotion  # Just the label for simplicity on overlay
 
         width_pil, height_pil = img_pil.size
-        margin = 25  # Increased margin for better look
+        # TĂNG MARGIN CỦA OVERLAY TỪ CÁC CẠNH ĐỂ TRÁNH BỊ CẮT VÀ DỊCH XUỐNG DƯỚI
+        margin_x = 55  # Tăng từ 50 -> 55
+        margin_y = 60  # Tăng từ 55 -> 60
 
         # Get text bounding box for accurate positioning
-        # draw.textbbox returns (left, top, right, bottom) relative to (0,0)
         emoji_bbox = draw.textbbox((0, 0), emotion_emoji_char, font=emotion_font)
         emoji_width = emoji_bbox[2] - emoji_bbox[0]
         emoji_height = emoji_bbox[3] - emoji_bbox[1]
@@ -208,29 +203,28 @@ def add_emotion_overlay(image_np, dominant_emotion, all_confidences_dict):
         text_height = text_bbox[3] - text_bbox[1]
 
         # Combine width of emoji and text for background calculation
-        # Max width needed for content + padding
         content_width = max(emoji_width, text_width)
-        content_height = emoji_height + text_height + 10  # 10px gap between emoji and text
+        content_height = emoji_height + text_height + 15  # 15px gap between emoji and text
 
-        bg_padding_x = 20  # Horizontal padding for background
-        bg_padding_y = 15  # Vertical padding for background
+        bg_padding_x = 25
+        bg_padding_y = 20
 
         # Position for the whole overlay block
-        block_x1 = width_pil - content_width - margin - bg_padding_x
-        block_y1 = margin - bg_padding_y
-        block_x2 = width_pil - margin + bg_padding_x
+        block_x1 = width_pil - content_width - margin_x - bg_padding_x
+        block_y1 = margin_y - bg_padding_y
+        block_x2 = width_pil - margin_x + bg_padding_x
         block_y2 = block_y1 + content_height + 2 * bg_padding_y
 
         # Draw a translucent background rectangle
-        draw.rounded_rectangle((block_x1, block_y1, block_x2, block_y2), radius=15,
-                               fill=(0, 0, 0, 180))  # Darker, more rounded background
+        draw.rounded_rectangle((block_x1, block_y1, block_x2, block_y2), radius=18,
+                               fill=(0, 0, 0, 200))  # Darker, more rounded background
 
         # Calculate text/emoji drawing positions within the background block
-        emoji_draw_x = block_x1 + (block_x2 - block_x1 - emoji_width) / 2  # Center emoji in block
-        emoji_draw_y = block_y1 + bg_padding_y
+        emoji_draw_x = block_x1 + (block_x2 - block_x1 - emoji_width) / 2
+        emoji_draw_y = block_y1 + bg_padding_y + 5
 
-        text_draw_x = block_x1 + (block_x2 - block_x1 - text_width) / 2  # Center text in block
-        text_draw_y = emoji_draw_y + emoji_height + 10  # Below emoji
+        text_draw_x = block_x1 + (block_x2 - block_x1 - text_width) / 2
+        text_draw_y = emoji_draw_y + emoji_height + 10
 
         draw.text((emoji_draw_x, emoji_draw_y), emotion_emoji_char, font=emotion_font,
                   fill=(255, 255, 255))  # White for emoji
@@ -239,7 +233,7 @@ def add_emotion_overlay(image_np, dominant_emotion, all_confidences_dict):
     else:
         print("Warning: Fonts not loaded, skipping text/emoji drawing on output image.")
 
-    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)  # Convert back to OpenCV format (BGR)
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_BGR2RGB)  # Convert back to OpenCV format (BGR)
 
 
 @app.route('/')
@@ -339,7 +333,8 @@ def analyze_image():
             # Draw rectangle and dominant emotion label on the frame (OpenCV)
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
             # Position text carefully to avoid going off-screen
-            text_size = cv2.getTextSize(dominant_emotion, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
+            text_size = cv2.getTextSize(dominant_emotion, cv2.FONT_HERSHEY_SIMPLEX, 1, 1)[
+                0]  # Giảm kích thước font một chút
             text_x = x
             text_y = y - 10
             if text_y < text_size[1] + 10:  # If too close to top
