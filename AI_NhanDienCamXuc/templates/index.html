@@ -804,17 +804,18 @@
             webcamVideoContainer.classList.add('loading'); // Show loading text for webcam
             webcamErrorMessageDiv.style.display = 'none'; // Clear webcam errors
 
-            // Reset specific image display aspects
+            // Reset specific image display aspects (does NOT hide imageErrorMessageDiv here)
             analyzedImage.src = '#'; // Clear image src
             analyzedImageDisplay.style.display = 'none'; // Hide image display
-            analyzedImageDisplay.classList.add('placeholder'); // Show placeholder for image tab
-            imageErrorMessageDiv.style.display = 'none'; // Clear image errors
+            analyzedImageDisplay.classList.add('placeholder'); // Add placeholder for image tab
+            imageErrorMessageDiv.style.display = 'none'; // ***Đã di chuyển để reset luôn khi resetAllEmotionDisplays được gọi.***
             selectedFile = null; // Clear selected file
             analyzeButton.disabled = true; // Disable analyze button
             fileInput.value = ''; // Clear file input element
         }
 
         function showMessage(element, message, isError = true) {
+            console.log("showMessage called for element:", element.id, "with message:", message, "isError:", isError);
             element.textContent = message;
             element.style.display = 'block';
             element.style.color = isError ? '#dc3545' : '#28a745';
@@ -937,7 +938,7 @@
             if (event.target.files.length > 0) {
                 selectedFile = event.target.files[0];
                 analyzeButton.disabled = false;
-                hideMessage(imageErrorMessageDiv);
+                hideMessage(imageErrorMessageDiv); // Ẩn thông báo lỗi cũ khi chọn ảnh mới
 
                 analyzedImageDisplay.classList.remove('placeholder'); // Remove placeholder
                 analyzedImageDisplay.style.display = 'flex'; // Show the container for preview
@@ -967,7 +968,7 @@
             }
 
             loadingOverlay.style.display = 'flex';
-            hideMessage(imageErrorMessageDiv);
+            hideMessage(imageErrorMessageDiv); // Ẩn thông báo lỗi khi bắt đầu phân tích
             analyzedImageDisplay.style.display = 'none'; // Hide previous image during processing
             analyzedImageDisplay.classList.remove('placeholder'); // Remove placeholder during processing
 
@@ -994,21 +995,36 @@
                     showMessage(imageErrorMessageDiv, 'Phân tích ảnh thành công!', false);
                     setTimeout(() => hideMessage(imageErrorMessageDiv), 3000);
                 } else {
-                    showMessage(imageErrorMessageDiv, data.error || "Có lỗi xảy ra trong quá trình phân tích.", true);
-                    resetAllEmotionDisplays(); // Reset emotion data on the left panel
-                    analyzedImageDisplay.style.display = 'none';
+                    // Logic xử lý lỗi từ server (dữ liệu.success = false)
+                    loadingOverlay.style.display = 'none'; // Ẩn loading
+                    const errorMessageText = data.error || "Có lỗi xảy ra trong quá trình phân tích.";
+                    console.log("Error from server (data.success=false). Proposed message:", errorMessageText);
+
+                    // Reset các hiển thị khác trước
+                    resetAllEmotionDisplays();
+                    analyzedImageDisplay.style.display = 'none'; // Đảm bảo ẩn ảnh đã phân tích
                     analyzedImage.src = '#';
-                    analyzedImageDisplay.classList.add('placeholder'); // Show placeholder on error
+                    analyzedImageDisplay.classList.add('placeholder'); // Hiển thị placeholder
+
+                    // Sau đó hiển thị thông báo lỗi
+                    showMessage(imageErrorMessageDiv, errorMessageText, true);
                 }
             })
             .catch(error => {
                 loadingOverlay.style.display = 'none';
-                showMessage(imageErrorMessageDiv, "Lỗi kết nối hoặc phản hồi không mong muốn từ server: " + error.message, true);
-                console.error('Error:', error);
+                const errorMessageText = error.error || "Lỗi kết nối hoặc phản hồi không mong muốn từ server: " + (error.message || JSON.stringify(error));
+                console.log("Error caught in analyze_image fetch. Proposed message:", errorMessageText);
+
+                // Reset các hiển thị khác trước
                 resetAllEmotionDisplays();
-                analyzedImageDisplay.style.display = 'none';
+                analyzedImageDisplay.style.display = 'none'; // Đảm bảo ẩn ảnh đã phân tích
                 analyzedImage.src = '#';
-                analyzedImageDisplay.classList.add('placeholder'); // Show placeholder on error
+                analyzedImageDisplay.classList.add('placeholder'); // Hiển thị placeholder
+
+                // Sau đó hiển thị thông báo lỗi
+                showMessage(imageErrorMessageDiv, errorMessageText, true);
+
+                console.error('Full Error Object:', error);
             });
         });
 
