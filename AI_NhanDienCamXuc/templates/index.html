@@ -6,7 +6,7 @@
     <title>Phân tích Cảm xúc AI - Chuyên nghiệp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Roboto:wght@700;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-color: #6a0dad; /* Deep Purple */
@@ -28,7 +28,7 @@
         body {
             background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
             color: var(--text-color);
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins', sans-serif; /* Font mặc định cho toàn bộ trang */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -104,8 +104,9 @@
         }
 
         .emotion-label {
+            font-family: 'Roboto', sans-serif; /* Áp dụng font Roboto cho chữ cảm xúc chính */
             font-size: 3.5rem;
-            font-weight: 800;
+            font-weight: 900; /* Đổi thành 900 cho đậm hơn nếu muốn */
             color: var(--primary-color);
             margin-bottom: 15px;
             text-shadow: 3px 3px 6px rgba(0,0,0,0.2);
@@ -135,7 +136,6 @@
             border-bottom: 4px solid var(--primary-color);
             padding-bottom: 12px;
             font-size: 1.6rem;
-            text-align: left;
         }
 
         .confidence-item {
@@ -735,7 +735,6 @@
         const webcamFlashEffect = document.getElementById('webcam-flash-effect');
 
         // Image upload elements
-        const imageTabContent = document.getElementById('image-tab');
         const fileInput = document.getElementById('file-input');
         const analyzeButton = document.getElementById('analyze-button');
         const imageUploadArea = document.getElementById('image-upload-area');
@@ -804,11 +803,11 @@
             webcamVideoContainer.classList.add('loading'); // Show loading text for webcam
             webcamErrorMessageDiv.style.display = 'none'; // Clear webcam errors
 
-            // Reset specific image display aspects (does NOT hide imageErrorMessageDiv here)
+            // Reset specific image display aspects
             analyzedImage.src = '#'; // Clear image src
             analyzedImageDisplay.style.display = 'none'; // Hide image display
             analyzedImageDisplay.classList.add('placeholder'); // Add placeholder for image tab
-            imageErrorMessageDiv.style.display = 'none'; // ***Đã di chuyển để reset luôn khi resetAllEmotionDisplays được gọi.***
+            imageErrorMessageDiv.style.display = 'none'; // Clear image errors
             selectedFile = null; // Clear selected file
             analyzeButton.disabled = true; // Disable analyze button
             fileInput.value = ''; // Clear file input element
@@ -969,8 +968,8 @@
 
             loadingOverlay.style.display = 'flex';
             hideMessage(imageErrorMessageDiv); // Ẩn thông báo lỗi khi bắt đầu phân tích
-            analyzedImageDisplay.style.display = 'none'; // Hide previous image during processing
-            analyzedImageDisplay.classList.remove('placeholder'); // Remove placeholder during processing
+            // KHÔNG ẩn analyzedImageDisplay hay analyzedImage.src ở đây để giữ ảnh gốc hiển thị
+            analyzedImageDisplay.classList.remove('placeholder'); // Loại bỏ placeholder khi phân tích
 
             const formData = new FormData();
             formData.append('image', selectedFile);
@@ -995,33 +994,62 @@
                     showMessage(imageErrorMessageDiv, 'Phân tích ảnh thành công!', false);
                     setTimeout(() => hideMessage(imageErrorMessageDiv), 3000);
                 } else {
-                    // Logic xử lý lỗi từ server (dữ liệu.success = false)
+                    // Xử lý lỗi khi backend trả về success: false (ví dụ: không tìm thấy khuôn mặt)
                     loadingOverlay.style.display = 'none'; // Ẩn loading
                     const errorMessageText = data.error || "Có lỗi xảy ra trong quá trình phân tích.";
                     console.log("Error from server (data.success=false). Proposed message:", errorMessageText);
 
-                    // Reset các hiển thị khác trước
-                    resetAllEmotionDisplays();
-                    analyzedImageDisplay.style.display = 'none'; // Đảm bảo ẩn ảnh đã phân tích
-                    analyzedImage.src = '#';
-                    analyzedImageDisplay.classList.add('placeholder'); // Hiển thị placeholder
+                    // Reset chỉ phần thông tin cảm xúc bên trái
+                    emotionLabelElement.textContent = "Chưa có dữ liệu";
+                    emotionEmojiElement.textContent = "🤔";
+                    confidenceListContainer.innerHTML = '<h4 class="mb-3">Tất cả cảm xúc</h4>';
+                    emotionLabels.forEach(label => {
+                        const confidenceItemHtml = `
+                            <div class="confidence-item">
+                                <span class="confidence-name">${label}:</span>
+                                <div class="progress-bar-wrapper"><div class="progress-bar ${label.toLowerCase()}" style="width: 0%;"></div></div>
+                                <span class="confidence-value">0.00%</span>
+                            </div>
+                        `;
+                        confidenceListContainer.insertAdjacentHTML('beforeend', confidenceItemHtml);
+                    });
+                    setGlowEffect(analyzedImageDisplay, 'Neutral'); // Reset glow cho ảnh
 
-                    // Sau đó hiển thị thông báo lỗi
+                    // Đảm bảo ảnh vẫn hiển thị (đã được thiết lập bởi file input change)
+                    analyzedImageDisplay.style.display = 'flex';
+                    analyzedImageDisplay.classList.remove('placeholder');
+
+                    // Hiển thị thông báo lỗi
                     showMessage(imageErrorMessageDiv, errorMessageText, true);
                 }
             })
             .catch(error => {
+                // Xử lý lỗi kết nối hoặc phản hồi không mong muốn (ví dụ: status 400)
                 loadingOverlay.style.display = 'none';
                 const errorMessageText = error.error || "Lỗi kết nối hoặc phản hồi không mong muốn từ server: " + (error.message || JSON.stringify(error));
                 console.log("Error caught in analyze_image fetch. Proposed message:", errorMessageText);
 
-                // Reset các hiển thị khác trước
-                resetAllEmotionDisplays();
-                analyzedImageDisplay.style.display = 'none'; // Đảm bảo ẩn ảnh đã phân tích
-                analyzedImage.src = '#';
-                analyzedImageDisplay.classList.add('placeholder'); // Hiển thị placeholder
+                // Reset chỉ phần thông tin cảm xúc bên trái
+                emotionLabelElement.textContent = "Chưa có dữ liệu";
+                emotionEmojiElement.textContent = "🤔";
+                confidenceListContainer.innerHTML = '<h4 class="mb-3">Tất cả cảm xúc</h4>';
+                emotionLabels.forEach(label => {
+                    const confidenceItemHtml = `
+                        <div class="confidence-item">
+                            <span class="confidence-name">${label}:</span>
+                            <div class="progress-bar-wrapper"><div class="progress-bar ${label.toLowerCase()}" style="width: 0%;"></div></div>
+                            <span class="confidence-value">0.00%</span>
+                        </div>
+                    `;
+                    confidenceListContainer.insertAdjacentHTML('beforeend', confidenceItemHtml);
+                });
+                setGlowEffect(analyzedImageDisplay, 'Neutral'); // Reset glow cho ảnh
 
-                // Sau đó hiển thị thông báo lỗi
+                // Đảm bảo ảnh vẫn hiển thị (đã được thiết lập bởi file input change)
+                analyzedImageDisplay.style.display = 'flex';
+                analyzedImageDisplay.classList.remove('placeholder');
+
+                // Hiển thị thông báo lỗi
                 showMessage(imageErrorMessageDiv, errorMessageText, true);
 
                 console.error('Full Error Object:', error);
